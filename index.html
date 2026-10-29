@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Simulador Oracle SQL</title>
+  <meta name="description" content="Simulador de exámenes para la opción de graduación Certificación Oracle Database SQL (UTP/FISC).">
+  <script>
+    // Aplica el tema guardado antes de pintar para evitar parpadeo.
+    try {
+      var t = localStorage.getItem('dbexam.tema');
+      if (t === '"dark"' || t === '"light"') document.documentElement.setAttribute('data-theme', JSON.parse(t));
+    } catch (e) {}
+  </script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand" id="brand" title="Inicio">
+        <div class="brand-logo">SQL</div>
+        <div class="brand-text">Simulador Oracle Database SQL<small>Certificación · UTP / FISC</small></div>
+      </div>
+      <div class="topbar-spacer"></div>
+      <button class="btn ghost icon-btn" id="themeBtn" title="Cambiar tema" aria-label="Cambiar tema"></button>
+    </div>
+  </header>
+
+  <main class="container" id="app">
+    <noscript>Esta aplicación requiere JavaScript.</noscript>
+  </main>
+
+  <!-- Bancos de preguntas (cada archivo define una variable global con un arreglo) -->
+  <script src="js/data/foundation.js"></script>
+  <script src="js/data/design.js"></script>
+  <script src="js/data/programming.js"></script>
+  <script src="js/data/exam071.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

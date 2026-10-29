@@ -1,0 +1,271 @@
+-- Lote 04 (1Z0-071): X067-X103
+SET PAGESIZE 100
+SET LINESIZE 200
+SET FEEDBACK ON
+SET VERIFY OFF
+COLUMN search_condition_vc FORMAT A40
+COLUMN column_name FORMAT A20
+COLUMN index_name FORMAT A20
+COLUMN tstz FORMAT A40
+COLUMN tsltz FORMAT A40
+ALTER SESSION SET NLS_DATE_FORMAT = 'DD-MON-RR';
+
+PROMPT ==== X067 (esperado: 6? filas dept 60 = 3; NOT NULL solo last_name/email; sin P/U)
+CREATE TABLE emp_copy AS SELECT employee_id, last_name, email FROM employees WHERE department_id = 60;
+SELECT COUNT(*) FROM emp_copy;
+SELECT constraint_type, search_condition_vc FROM user_constraints WHERE table_name = 'EMP_COPY';
+SELECT column_name, nullable FROM user_tab_columns WHERE table_name = 'EMP_COPY' ORDER BY column_id;
+
+PROMPT ==== X068 SET UNUSED y re-ADD del mismo nombre (esperado OK)
+ALTER TABLE emp_copy SET UNUSED (email);
+SELECT email FROM emp_copy;
+ALTER TABLE emp_copy ADD (email VARCHAR2(30));
+DROP TABLE emp_copy PURGE;
+
+PROMPT ==== X069 a OK, b OK, c ORA-01758, d ORA-01439, e ORA-01441
+CREATE TABLE products (prod_id NUMBER(6) PRIMARY KEY, name VARCHAR2(30), price NUMBER(8,2));
+INSERT INTO products VALUES (1, 'ABCDEFGHIJKLMNOPQRST', 10);
+COMMIT;
+ALTER TABLE products MODIFY (name VARCHAR2(50));
+ALTER TABLE products ADD (status VARCHAR2(10) DEFAULT 'ACTIVE' NOT NULL);
+ALTER TABLE products ADD (category VARCHAR2(10) NOT NULL);
+ALTER TABLE products MODIFY (price VARCHAR2(10));
+ALTER TABLE products MODIFY (name VARCHAR2(10));
+DROP TABLE products PURGE;
+
+PROMPT ==== X070 esperado 1
+CREATE TABLE t_hist (c NUMBER);
+INSERT INTO t_hist VALUES (1);
+COMMIT;
+DROP TABLE t_hist;
+FLASHBACK TABLE t_hist TO BEFORE DROP;
+SELECT COUNT(*) FROM t_hist;
+DROP TABLE t_hist PURGE;
+
+PROMPT ==== X071 SELECT OK, DELETE/TRUNCATE/UPDATE ORA-12081, DROP OK
+CREATE TABLE orders_ro (id NUMBER, status VARCHAR2(10));
+INSERT INTO orders_ro VALUES (1, 'X');
+COMMIT;
+ALTER TABLE orders_ro READ ONLY;
+SELECT * FROM orders_ro;
+DELETE FROM orders_ro;
+TRUNCATE TABLE orders_ro;
+UPDATE orders_ro SET status = NULL;
+DROP TABLE orders_ro;
+PURGE RECYCLEBIN;
+
+PROMPT ==== X072 esperado: 1 OK, 2 OK, 3 ORA-02290; count 2
+CREATE TABLE items (id NUMBER PRIMARY KEY, qty NUMBER CONSTRAINT items_qty_ck CHECK (qty > 0));
+INSERT INTO items VALUES (1, 10);
+INSERT INTO items VALUES (2, NULL);
+INSERT INTO items VALUES (3, 0);
+SELECT COUNT(*) FROM items;
+DROP TABLE items PURGE;
+
+PROMPT ==== X073 esperado: tabla creada; DELETE ORA-01407
+CREATE TABLE dept_t (dept_id NUMBER PRIMARY KEY);
+CREATE TABLE emp_t (emp_id NUMBER PRIMARY KEY, dept_id NUMBER NOT NULL REFERENCES dept_t (dept_id) ON DELETE SET NULL);
+INSERT INTO dept_t VALUES (10);
+INSERT INTO emp_t VALUES (1, 10);
+DELETE FROM dept_t WHERE dept_id = 10;
+SELECT COUNT(*) FROM dept_t;
+DROP TABLE emp_t PURGE;
+DROP TABLE dept_t PURGE;
+
+PROMPT ==== X074 a ORA-02292; c, d errores de sintaxis; b cascade
+CREATE TABLE p (id NUMBER PRIMARY KEY);
+CREATE TABLE h (pid NUMBER REFERENCES p (id));
+INSERT INTO p VALUES (1);
+INSERT INTO h VALUES (1);
+DELETE FROM p;
+CREATE TABLE h2 (pid NUMBER REFERENCES p (id) ON DELETE SET DEFAULT);
+CREATE TABLE h3 (pid NUMBER REFERENCES p (id) ON UPDATE CASCADE);
+CREATE TABLE h4 (pid NUMBER REFERENCES p (id) ON DELETE CASCADE);
+INSERT INTO h4 VALUES (1);
+DROP TABLE h PURGE;
+DELETE FROM p;
+SELECT COUNT(*) h4_rows FROM h4;
+DROP TABLE h4 PURGE;
+DROP TABLE p PURGE;
+
+PROMPT ==== X075 esperado ORA-02091 en COMMIT y 0 filas
+CREATE TABLE t_def (id NUMBER CONSTRAINT t_def_pk PRIMARY KEY DEFERRABLE INITIALLY DEFERRED);
+INSERT INTO t_def VALUES (1);
+INSERT INTO t_def VALUES (1);
+INSERT INTO t_def VALUES (2);
+COMMIT;
+SELECT COUNT(*) FROM t_def;
+PROMPT ==== X076 e: indice de PK deferrable es NONUNIQUE; a: default NOT DEFERRABLE
+SELECT index_name, uniqueness FROM user_indexes WHERE table_name = 'T_DEF';
+CREATE TABLE t_nd (id NUMBER CONSTRAINT t_nd_pk PRIMARY KEY);
+SELECT constraint_name, deferrable, deferred FROM user_constraints WHERE table_name IN ('T_DEF', 'T_ND') ORDER BY 1;
+PROMPT -- b: DEFERRABLE INITIALLY IMMEDIATE + SET CONSTRAINT DEFERRED (esperado: duplicado aceptado hasta COMMIT)
+CREATE TABLE t_di (id NUMBER CONSTRAINT t_di_pk PRIMARY KEY DEFERRABLE INITIALLY IMMEDIATE);
+SET CONSTRAINT t_di_pk DEFERRED;
+INSERT INTO t_di VALUES (1);
+INSERT INTO t_di VALUES (1);
+ROLLBACK;
+DROP TABLE t_def PURGE;
+DROP TABLE t_nd PURGE;
+DROP TABLE t_di PURGE;
+
+PROMPT ==== X077 esperado ORA-02297
+ALTER TABLE departments DISABLE PRIMARY KEY;
+
+PROMPT ==== X078 a OK; b error
+CREATE TABLE contacts (id NUMBER, phone VARCHAR2(15));
+INSERT INTO contacts VALUES (1, '555');
+ALTER TABLE contacts MODIFY (phone CONSTRAINT contacts_phone_nn NOT NULL);
+ALTER TABLE contacts ADD CONSTRAINT contacts_phone_nn2 NOT NULL (phone);
+DROP TABLE contacts PURGE;
+
+PROMPT ==== X079 esperado ORA-01402
+CREATE VIEW v_ship AS SELECT employee_id, last_name, department_id FROM employees WHERE department_id = 50 WITH CHECK OPTION;
+UPDATE v_ship SET department_id = 60 WHERE employee_id = 141;
+DROP VIEW v_ship;
+
+PROMPT ==== X080 esperado: warning compilation errors; status INVALID
+CREATE OR REPLACE FORCE VIEW v_orders AS SELECT order_id, total FROM new_orders;
+SELECT status FROM user_objects WHERE object_name = 'V_ORDERS';
+DROP VIEW v_orders;
+
+PROMPT ==== X081 a ORA-01400; b ORA-42399; c ORA-01732; d ORA-01733
+CREATE VIEW v_ins AS SELECT employee_id, first_name FROM employees;
+INSERT INTO v_ins VALUES (999, 'X');
+CREATE VIEW v_ro AS SELECT employee_id, salary FROM employees WITH READ ONLY;
+UPDATE v_ro SET salary = 1;
+CREATE VIEW v_dis AS SELECT DISTINCT department_id FROM employees;
+UPDATE v_dis SET department_id = 1;
+CREATE VIEW v_calc AS SELECT employee_id, salary * 12 annual FROM employees;
+UPDATE v_calc SET annual = 1;
+DROP VIEW v_ins;
+DROP VIEW v_ro;
+DROP VIEW v_dis;
+DROP VIEW v_calc;
+
+PROMPT ==== X082 a: vista con ORDER BY (OK); c: vista INVALID tras drop de tabla base
+CREATE TABLE base82 (c NUMBER);
+CREATE VIEW v82 AS SELECT c FROM base82 ORDER BY c;
+DROP TABLE base82 PURGE;
+SELECT object_name, status FROM user_objects WHERE object_name = 'V82';
+DROP VIEW v82;
+
+PROMPT ==== X083 esperado 1, 1
+CREATE TABLE t (c1 NUMBER, c2 NUMBER);
+CREATE SEQUENCE s1 START WITH 1 INCREMENT BY 1;
+INSERT INTO t (c1, c2) VALUES (s1.NEXTVAL, s1.NEXTVAL);
+SELECT * FROM t;
+DELETE FROM t;
+COMMIT;
+
+PROMPT ==== X084 esperado 2
+CREATE SEQUENCE s2 START WITH 1 INCREMENT BY 1 NOCACHE;
+INSERT INTO t (c1) VALUES (s2.NEXTVAL);
+ROLLBACK;
+INSERT INTO t (c1) VALUES (s2.NEXTVAL);
+COMMIT;
+SELECT c1 FROM t;
+
+PROMPT ==== X085 esperado ORA-04013; con NOCACHE: 1,2,3,1
+CREATE SEQUENCE s_small START WITH 1 MAXVALUE 3 CYCLE;
+CREATE SEQUENCE s_small START WITH 1 MAXVALUE 3 CYCLE NOCACHE;
+SELECT s_small.NEXTVAL FROM dual;
+SELECT s_small.NEXTVAL FROM dual;
+SELECT s_small.NEXTVAL FROM dual;
+SELECT s_small.NEXTVAL FROM dual;
+DROP SEQUENCE s_small;
+
+PROMPT ==== X086 a, b, c ORA-02287; d, e, f OK
+SELECT DISTINCT s1.NEXTVAL FROM dual;
+SELECT 1 FROM dual WHERE s1.NEXTVAL > 0;
+SELECT 1 FROM dual ORDER BY s1.NEXTVAL;
+INSERT INTO t (c1) VALUES (s1.NEXTVAL);
+UPDATE t SET c2 = s1.NEXTVAL;
+CREATE TABLE t_seqdef (id NUMBER DEFAULT s1.NEXTVAL, x NUMBER);
+DROP TABLE t_seqdef PURGE;
+ROLLBACK;
+DROP SEQUENCE s1;
+DROP SEQUENCE s2;
+DROP TABLE t PURGE;
+
+PROMPT ==== X087 esperado ORA-00980
+CREATE TABLE prices (c NUMBER);
+CREATE SYNONYM pr FOR prices;
+DROP TABLE prices PURGE;
+SELECT * FROM pr;
+DROP SYNONYM pr;
+
+PROMPT ==== X088 a, b: sinonimo privado DUAL tiene prioridad sobre el publico DUAL
+CREATE TABLE my_dual (dummy VARCHAR2(20));
+INSERT INTO my_dual VALUES ('PRIVADO');
+CREATE SYNONYM dual FOR my_dual;
+SELECT dummy FROM dual;
+DROP SYNONYM dual;
+SELECT dummy FROM dual;
+DROP TABLE my_dual PURGE;
+
+PROMPT ==== X089 esperado: 2 indices (PK y UK)
+CREATE TABLE customers (cust_id NUMBER PRIMARY KEY);
+CREATE TABLE orders (
+  order_id NUMBER CONSTRAINT ord_pk PRIMARY KEY,
+  code VARCHAR2(10) CONSTRAINT ord_code_uk UNIQUE,
+  cust_id NUMBER CONSTRAINT ord_cust_fk REFERENCES customers (cust_id),
+  total NUMBER CONSTRAINT ord_total_ck CHECK (total >= 0));
+SELECT index_name, uniqueness FROM user_indexes WHERE table_name = 'ORDERS' ORDER BY 1;
+DROP TABLE orders PURGE;
+DROP TABLE customers PURGE;
+
+PROMPT ==== X090 esperado ORA-02429
+DROP INDEX emp_pk;
+
+PROMPT ==== X091 esperado 1
+CREATE GLOBAL TEMPORARY TABLE gtt_work (c NUMBER);
+INSERT INTO gtt_work VALUES (1);
+INSERT INTO gtt_work VALUES (2);
+COMMIT;
+INSERT INTO gtt_work VALUES (3);
+SELECT COUNT(*) FROM gtt_work;
+PROMPT ==== X092 d: valor por defecto DELETE ROWS (DURATION = SYS$TRANSACTION); e: indice en GTT OK
+SELECT temporary, duration FROM user_tables WHERE table_name = 'GTT_WORK';
+COMMIT;
+CREATE INDEX gtt_ix ON gtt_work (c);
+DROP TABLE gtt_work PURGE;
+
+PROMPT ==== X094 c: USER_TABLES sin OWNER (ORA-00904); d: DBA_TABLES (ORA-00942)
+SELECT owner FROM user_tables;
+SELECT COUNT(*) FROM dba_tables;
+
+PROMPT ==== X095 esperado C
+SELECT constraint_type, search_condition_vc FROM user_constraints WHERE table_name = 'EMPLOYEES' AND constraint_name LIKE 'SYS%' ORDER BY 2;
+
+PROMPT ==== X097 a, b OK; c ORA-00969; d ORA-00993; e error
+CREATE TABLE emp97 (empno NUMBER, ename VARCHAR2(10), sal NUMBER);
+GRANT UPDATE (sal) ON emp97 TO sim071b;
+GRANT INSERT (empno, ename) ON emp97 TO sim071b;
+GRANT SELECT (sal) ON emp97 TO sim071b;
+GRANT SELECT ON emp97 TO sim071b WITH ADMIN OPTION;
+GRANT DELETE (sal) ON emp97 TO sim071b;
+DROP TABLE emp97 PURGE;
+
+PROMPT ==== X099 esperado tstz 10:00 -05:00, tsltz 16:00
+ALTER SESSION SET TIME_ZONE = '-05:00';
+CREATE TABLE tz_demo (tstz TIMESTAMP WITH TIME ZONE, tsltz TIMESTAMP WITH LOCAL TIME ZONE);
+INSERT INTO tz_demo VALUES (TIMESTAMP '2024-05-01 10:00:00 -05:00', TIMESTAMP '2024-05-01 10:00:00 -05:00');
+ALTER SESSION SET TIME_ZONE = '+01:00';
+SELECT TO_CHAR(tstz, 'HH24:MI TZH:TZM') tstz, TO_CHAR(tsltz, 'HH24:MI') tsltz FROM tz_demo;
+DROP TABLE tz_demo PURGE;
+
+PROMPT ==== X100 esperado ORA-01839
+SELECT DATE '2024-01-31' + INTERVAL '1' MONTH FROM dual;
+
+PROMPT ==== X101 tipos: SYSTIMESTAMP TSTZ, LOCALTIMESTAMP TS, CURRENT_TIMESTAMP TSTZ, SYSDATE/CURRENT_DATE DATE
+CREATE TABLE t_types AS SELECT SYSTIMESTAMP a, LOCALTIMESTAMP b, CURRENT_TIMESTAMP c, SYSDATE d, CURRENT_DATE e FROM dual;
+SELECT column_name, data_type FROM user_tab_columns WHERE table_name = 'T_TYPES' ORDER BY column_id;
+DROP TABLE t_types PURGE;
+
+PROMPT ==== X102 esperado ORA-30076
+SELECT EXTRACT(HOUR FROM SYSDATE) FROM dual;
+
+PROMPT ==== X103 esperado +02-02
+SELECT INTERVAL '1-6' YEAR TO MONTH + INTERVAL '8' MONTH AS r FROM dual;
+EXIT;

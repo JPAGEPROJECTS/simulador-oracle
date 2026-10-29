@@ -1,0 +1,51 @@
+-- Sondeo previo al lote 04: comportamientos a confirmar antes de redactar
+SET FEEDBACK ON
+SET LINESIZE 200
+COLUMN value FORMAT A20
+PROMPT ==== recyclebin
+SELECT value FROM v$parameter WHERE name = 'recyclebin';
+SHOW PARAMETER recyclebin
+CREATE TABLE t_fb (c NUMBER);
+DROP TABLE t_fb;
+FLASHBACK TABLE t_fb TO BEFORE DROP;
+SELECT COUNT(*) FROM t_fb;
+DROP TABLE t_fb PURGE;
+PROMPT ==== read only table
+CREATE TABLE t_ro (c NUMBER);
+INSERT INTO t_ro VALUES (1);
+COMMIT;
+ALTER TABLE t_ro READ ONLY;
+INSERT INTO t_ro VALUES (2);
+DELETE FROM t_ro;
+TRUNCATE TABLE t_ro;
+ALTER TABLE t_ro ADD (d NUMBER);
+CREATE INDEX t_ro_ix ON t_ro (c);
+SELECT COUNT(*) FROM t_ro;
+DROP TABLE t_ro PURGE;
+PROMPT ==== segundo indice invisible sobre la misma columna
+CREATE TABLE t_ix (c NUMBER);
+CREATE INDEX t_ix1 ON t_ix (c);
+CREATE INDEX t_ix2 ON t_ix (c) INVISIBLE;
+CREATE UNIQUE INDEX t_ix3 ON t_ix (c) INVISIBLE;
+DROP TABLE t_ix PURGE;
+PROMPT ==== MODIFY NOT DEFERRABLE -> DEFERRABLE
+CREATE TABLE t_d (c NUMBER CONSTRAINT t_d_pk PRIMARY KEY);
+ALTER TABLE t_d MODIFY CONSTRAINT t_d_pk DEFERRABLE;
+SET CONSTRAINT t_d_pk DEFERRED;
+DROP TABLE t_d PURGE;
+PROMPT ==== EXTRACT HOUR de DATE / SYSDATE
+SELECT EXTRACT(HOUR FROM DATE '2024-01-01') FROM dual;
+SELECT EXTRACT(HOUR FROM SYSDATE) FROM dual;
+SELECT EXTRACT(HOUR FROM SYSTIMESTAMP) FROM dual WHERE 1 = 0;
+PROMPT ==== GRANT WITH GRANT OPTION a PUBLIC
+CREATE TABLE t_g (c NUMBER);
+GRANT SELECT ON t_g TO PUBLIC WITH GRANT OPTION;
+GRANT SELECT (c) ON t_g TO sim071b;
+GRANT SELECT ON t_g TO sim071b WITH ADMIN OPTION;
+DROP TABLE t_g PURGE;
+PROMPT ==== CTAS: NOT NULL de columna PK
+CREATE TABLE t_ctas AS SELECT employee_id, last_name, email FROM employees WHERE 1 = 0;
+SELECT column_name, nullable FROM user_tab_columns WHERE table_name = 'T_CTAS' ORDER BY column_id;
+SELECT constraint_type, search_condition_vc FROM user_constraints WHERE table_name = 'T_CTAS';
+DROP TABLE t_ctas PURGE;
+EXIT;

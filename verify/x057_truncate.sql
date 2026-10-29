@@ -1,0 +1,45 @@
+-- X057: comportamiento de TRUNCATE con FK habilitada (19c)
+SET FEEDBACK ON
+CREATE TABLE padre (id NUMBER PRIMARY KEY);
+CREATE TABLE hija (pid NUMBER CONSTRAINT hija_fk REFERENCES padre(id));
+INSERT INTO padre VALUES (1);
+INSERT INTO padre VALUES (2);
+COMMIT;
+PROMPT ==== caso 1: hija vacia, padre con filas
+TRUNCATE TABLE padre;
+INSERT INTO padre VALUES (1);
+INSERT INTO hija VALUES (1);
+COMMIT;
+PROMPT ==== caso 2: hija con filas
+TRUNCATE TABLE padre;
+PROMPT ==== caso 3: hija vaciada con DELETE (sin truncar)
+DELETE FROM hija;
+COMMIT;
+TRUNCATE TABLE padre;
+PROMPT ==== caso 4: FK deshabilitada con filas hijas
+INSERT INTO padre VALUES (1);
+INSERT INTO hija VALUES (1);
+COMMIT;
+ALTER TABLE hija DISABLE CONSTRAINT hija_fk;
+TRUNCATE TABLE padre;
+DROP TABLE hija PURGE;
+DROP TABLE padre PURGE;
+PROMPT ==== X056 INSERT FIRST (esperado 4 filas)
+CREATE TABLE pay (sal NUMBER);
+CREATE TABLE big (sal NUMBER);
+CREATE TABLE mid (sal NUMBER);
+CREATE TABLE small (sal NUMBER);
+INSERT INTO pay VALUES (15000);
+INSERT INTO pay VALUES (12000);
+INSERT INTO pay VALUES (8000);
+INSERT INTO pay VALUES (3000);
+INSERT FIRST
+  WHEN sal > 10000 THEN INTO big VALUES (sal)
+  WHEN sal > 5000 THEN INTO mid VALUES (sal)
+  ELSE INTO small VALUES (sal)
+SELECT sal FROM pay;
+DROP TABLE pay PURGE;
+DROP TABLE big PURGE;
+DROP TABLE mid PURGE;
+DROP TABLE small PURGE;
+EXIT;

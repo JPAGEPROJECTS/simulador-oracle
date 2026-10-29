@@ -1,0 +1,3 @@
+-- X163 (SIM071): otorga SELECT
+GRANT SELECT ON ord_seq TO sim071b;
+EXIT;
