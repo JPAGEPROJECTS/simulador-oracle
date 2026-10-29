@@ -12,6 +12,13 @@
       if (t === '"dark"' || t === '"light"') document.documentElement.setAttribute('data-theme', JSON.parse(t));
     } catch (e) {}
   </script>
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#c74634">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Oracle SQL">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -22,6 +29,7 @@
         <div class="brand-text">Simulador Oracle Database SQL<small>Certificación · UTP / FISC</small></div>
       </div>
       <div class="topbar-spacer"></div>
+      <button class="btn sm install-btn" id="installBtn" hidden title="Instalar como aplicación en este dispositivo">⤓ <span>Instalar app</span></button>
       <button class="btn ghost icon-btn" id="themeBtn" title="Cambiar tema" aria-label="Cambiar tema"></button>
     </div>
   </header>

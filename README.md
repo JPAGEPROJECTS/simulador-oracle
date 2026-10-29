@@ -19,6 +19,15 @@ Abre `index.html` con doble clic. No necesita servidor, instalación ni conexió
 - **Repasar mis errores**: el botón de cada examen reúne las preguntas que fallaste; una pregunta sale de la lista cuando la respondes bien. En el historial también puedes repasar los fallos de un intento concreto.
 - Las preguntas y sus opciones se barajan en cada intento. Atajos de teclado: `A`–`F` o `1`–`6` para elegir, `Enter` para responder o avanzar, `←`/`→` para navegar y `M` para marcar.
 
+### Instalar en el teléfono
+
+Publicada en GitHub Pages (o cualquier hosting https), la página puede instalarse como aplicación y funciona sin conexión gracias a `manifest.webmanifest` y `sw.js`:
+
+- **Android (Chrome/Edge)**: toca el botón **Instalar app** del encabezado.
+- **iPhone/iPad (Safari)**: el botón muestra los pasos: Compartir → *Agregar a pantalla de inicio*.
+
+Con `file://` el botón no aparece, porque los navegadores no permiten instalar ni usar service workers en ese caso. Si cambias la lista de archivos de la app, actualízala en `sw.js` y sube la versión de `CACHE`; los cambios llegan al teléfono la segunda vez que abres la app.
+
 El historial, la lista de errores, el tema claro/oscuro y las preferencias se guardan en el `localStorage` del navegador.
 
 ## Estructura

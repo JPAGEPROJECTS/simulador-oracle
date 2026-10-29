@@ -159,6 +159,38 @@
   });
   pintarBotonTema();
 
+  // ---------- Instalar como aplicación (PWA) ----------
+  // Solo funciona servida por http(s) (p. ej. GitHub Pages); con file:// el botón no aparece.
+  var installBtn = document.getElementById('installBtn');
+  var promptInstalacion = null;
+  var esStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+    window.navigator.standalone === true;
+  var esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (/^https?:$/.test(location.protocol) && 'serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  }
+  if (!esStandalone && /^https?:$/.test(location.protocol)) {
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      promptInstalacion = e;
+      installBtn.hidden = false;
+    });
+    if (esIOS) installBtn.hidden = false;   // Safari no tiene diálogo propio: se muestran instrucciones
+  }
+  installBtn.addEventListener('click', function () {
+    if (promptInstalacion) {
+      promptInstalacion.prompt();
+      promptInstalacion.userChoice.then(function (r) {
+        if (r.outcome === 'accepted') installBtn.hidden = true;
+        promptInstalacion = null;
+      });
+    } else {
+      alert('Para instalarla en tu iPhone/iPad:\n\n1. Abre esta página en Safari.\n2. Toca el botón Compartir (cuadro con flecha hacia arriba).\n3. Elige "Agregar a pantalla de inicio" y toca "Agregar".');
+    }
+  });
+  window.addEventListener('appinstalled', function () { installBtn.hidden = true; });
+
   // ---------- Estado de sesión ----------
   var S = null;           // sesión activa
   var timerId = null;
